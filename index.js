@@ -34,39 +34,43 @@ const Usuario = require("./usuario.js");
   await page.waitForNavigation({'waitUntil': 'load'});
   console.log('Página carregada.');
 
-   const quantidade = await page.evaluate(() => {
-    const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]'))
-    return captions
-   });
+  const quantidade = await page.$$eval('table[class="views-table cols-3"]', tables => tables.length);
 
-  console.log('Qnt: %d', quantidade.length);
+  for(var i=1; i<6; i++){
+    const nomes = await page.evaluate((i) => {
+        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > caption'))
+        return captions.map(caption => caption.innerText)
+      }, i);
 
-  const nomes = await page.evaluate((i) => {
-  const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child(4) > caption'))
-  return captions.map(caption => caption.innerText)
-  })
+    var usuario = new Usuario(nomes[0]);
 
-  const certificados = await page.evaluate((i) => {
-  const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child(4) > tbody > tr > td.views-field.views-field-field-certificacao'))
-  return captions.map(caption => caption.innerText)
-  })
+    const quantidadeCertificados = await page.$$eval('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr', trs => trs.length);
 
-  const numeros = await page.evaluate((i) => {
-  const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child(4) > tbody > tr > td.views-field.views-field-field-certificado-numero'))
-  return captions.map(caption => caption.innerText)
-  })
+    for(var j=1; j<=quantidadeCertificados; j++){
 
-  const data = await page.evaluate((i) => {
-  const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child(4) > tbody > tr > td.views-field.views-field-field-certificacao-data'))
-  return captions.map(caption => caption.innerText)
-  })
+      const certificados = await page.evaluate(({i, j}) => {
+        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificacao'))
+        return captions.map(caption => caption.innerText)
+      }, {i, j})
 
-  var usuario = new Usuario(nomes[0]);
-  var certificado = new Certificado(certificados[0], numeros[0], data[0]);
-  usuario.adicionarCertificado(certificado);
+      const numeros = await page.evaluate(({i, j}) => {
+        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificado-numero'))
+        return captions.map(caption => caption.innerText)
+      }, {i, j})
 
-  console.log(usuario.nome);
-  console.log(usuario.certificados);
+      const data = await page.evaluate(({i, j}) => {
+        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificacao-data'))
+        return captions.map(caption => caption.innerText)
+      }, {i, j})
 
+      var certificado = new Certificado(certificados[0], numeros[0], data[0]);
+      usuario.adicionarCertificado(certificado);
+
+    }
+
+    console.log(usuario.nome);
+    console.log(usuario.certificados);
+
+  }
   //await browser.close();
 })()
