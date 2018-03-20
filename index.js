@@ -1,6 +1,9 @@
 const puppeteer = require('puppeteer');
 const Certificado = require("./certificado.js");
 const Usuario = require("./usuario.js");
+const fs = require('fs');
+
+var usuarios = [];
 
 (async () => {
   const browser = await puppeteer.launch({headless: false});
@@ -34,43 +37,76 @@ const Usuario = require("./usuario.js");
   await page.waitForNavigation({'waitUntil': 'load'});
   console.log('Página carregada.');
 
-  const quantidade = await page.$$eval('table[class="views-table cols-3"]', tables => tables.length);
+  await page.click('li[class="pager-last last"] > a');
+  await page.waitForSelector('li[class="pager-current last');
 
-  for(var i=1; i<6; i++){
-    const nomes = await page.evaluate((i) => {
-        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > caption'))
-        return captions.map(caption => caption.innerText)
-      }, i);
+  console.log('Carregou ultima pagina')
 
-    var usuario = new Usuario(nomes[0]);
+  const quantidadeDePaginas = await page.evaluate(() => document.querySelector('li[class="pager-current last').innerText);
 
-    const quantidadeCertificados = await page.$$eval('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr', trs => trs.length);
+  console.log('qtd: %s', quantidadeDePaginas);
 
-    for(var j=1; j<=quantidadeCertificados; j++){
+  for(var x=2;x>=0;x--){
+    await page.waitForSelector('table[class="views-table cols-3"]', {visible: true, timeout: 500000});
+    const quantidadeDePessoas = await page.$$eval('table[class="views-table cols-3"]', tables => tables.length);
 
-      const certificados = await page.evaluate(({i, j}) => {
-        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificacao'))
-        return captions.map(caption => caption.innerText)
-      }, {i, j})
+    for(var i=1; i<=quantidadeDePessoas; i++){
+      const nomes = await page.evaluate((i) => {
+          const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > caption'))
+          return captions.map(caption => caption.innerText)
+        }, i);
 
-      const numeros = await page.evaluate(({i, j}) => {
-        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificado-numero'))
-        return captions.map(caption => caption.innerText)
-      }, {i, j})
+      var usuario = new Usuario(nomes[0]);
 
-      const data = await page.evaluate(({i, j}) => {
-        const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificacao-data'))
-        return captions.map(caption => caption.innerText)
-      }, {i, j})
+      const quantidadeCertificados = await page.$$eval('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr', trs => trs.length);
 
-      var certificado = new Certificado(certificados[0], numeros[0], data[0]);
-      usuario.adicionarCertificado(certificado);
+      for(var j=1; j<=quantidadeCertificados; j++){
+
+        const certificados = await page.evaluate(({i, j}) => {
+          const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificacao'))
+          return captions.map(caption => caption.innerText)
+        }, {i, j})
+
+        const numeros = await page.evaluate(({i, j}) => {
+          const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificado-numero'))
+          return captions.map(caption => caption.innerText)
+        }, {i, j})
+
+        const data = await page.evaluate(({i, j}) => {
+          const captions = Array.from(document.querySelectorAll('table[class="views-table cols-3"]:nth-child('+ i +') > tbody > tr:nth-child('+ j +') > td.views-field.views-field-field-certificacao-data'))
+          return captions.map(caption => caption.innerText)
+        }, {i, j})
+
+        var certificado = new Certificado(certificados[0], numeros[0], data[0]);
+        usuario.adicionarCertificado(certificado);
+
+      }
+
+      usuarios.push(usuario);
 
     }
 
-    console.log(usuario.nome);
-    console.log(usuario.certificados);
+    console.log('Página: %s', x);
+
+    if(x!=quantidadeDePaginas){
+      await page.waitForSelector('li[class="pager-previous');
+      await page.click('li[class="pager-previous"]');
+    }
 
   }
+
+  function mycomparator(a,b) {
+    return parseInt(b.certificados.length, 10) - parseInt(a.certificados.length, 10);
+  }
+
+  usuarios.sort(mycomparator);
+  var data = JSON.stringify(usuarios, null, 2);
+
+  fs.writeFile("data.json", data, 'utf8', function (err) {
+    if (err) {
+        return console.log(err);
+    }
+    console.log("The file was saved!");
+  });
   //await browser.close();
 })()
