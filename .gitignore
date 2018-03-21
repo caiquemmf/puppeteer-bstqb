@@ -3,4 +3,5 @@ node_modules/
 
 # files
 package-lock.json
-data.json
+usuarios-full.json
+usuarios-restricted.json

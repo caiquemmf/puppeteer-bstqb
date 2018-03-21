@@ -2,8 +2,14 @@ const puppeteer = require('puppeteer');
 const Certificado = require("./certificado.js");
 const Usuario = require("./usuario.js");
 const fs = require('fs');
+const readline = require('readline');
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
 var usuarios = [];
+var dados;
 
 (async () => {
   const browser = await puppeteer.launch({headless: false});
@@ -17,7 +23,7 @@ var usuarios = [];
     'path': '/'
   });
 
-  await page.goto('http://www.bstqb.org.br/?q=pt-br/base-de-certificados');
+  await page.goto('http://www.bstqb.org.br/base-de-certificados');
   console.log('Acessou a página de certificados.')
 
   await page.setRequestInterception(true);
@@ -82,6 +88,7 @@ var usuarios = [];
 
       }
 
+      usuario.calcularTotalDeCertificados();
       usuarios.push(usuario);
 
     }
@@ -100,13 +107,98 @@ var usuarios = [];
   }
 
   usuarios.sort(mycomparator);
-  var data = JSON.stringify(usuarios, null, 2);
 
-  fs.writeFile("data.json", data, 'utf8', function (err) {
-    if (err) {
-        return console.log(err);
+  var leituraRecursiva = function () {
+    rl.question("Escolha uma opção:\n"
+        + "1) Imprimir 10 primeiros por nome e quantidade de certificados\n"
+        + "2) Total de usuários e de certificados emitidos\n"
+        + "3) Exportar todos os usuários para arquivo (usuarios-full.json)"
+        + "4) Exportar apenas nome e quantidade de certificados de todos os usuários (usuarios-restricted.json)"
+        + "5) Exit\n"
+        + "-----------------------------------------------------------------\n"
+        , function (line) {
+
+            switch (line){
+                case "1":
+                    listar10PrimeirosPorNomeEQuantidade();
+                    break;
+                case "2":
+                    imprimirTotais();
+                    break;
+                case "3":
+                    exportarTodosOsUsuarios(false);
+                    break;
+                case "4":
+                    exportarTodosOsUsuarios(true);
+                    break;
+                case "5":
+                    return rl.close();
+                    break;
+                default:
+                    console.log("No such option. Please enter another: ");
+            }
+    leituraRecursiva(); //Calling this function again to ask new question
+    });
+  };
+
+  leituraRecursiva();
+
+  function listar10PrimeirosPorNomeEQuantidade(){
+    var dezPrimeiros = usuarios.slice(0,10);
+    var contador = 0;
+
+    console.log('----------------- RANKING 10 PRIMEIROS -----------------\n');
+
+    dezPrimeiros.forEach(function(u){
+        console.log('%d. Nome: %s', ++contador, u.nome);
+        console.log('   Quantidade de Certificados: %s', u.totalCertificados);
+        console.log('');
+    });
+
+    console.log('-------------------------  FIM  ------------------------\n');
+  }
+
+  function imprimirTotais(){
+    console.log('----------------- TOTAIS -----------------\n');
+    console.log('Total de usuários: %s', usuarios.length);
+    console.log('Total de certificados emitidos: %s', obterTotalDeCertificados());
+    console.log('');
+    console.log('-------------------------  FIM  ------------------------\n');
+  }
+
+  function obterTotalDeCertificados(){
+    var totalDeCertificados = 0;
+
+    usuarios.forEach(function(c) {
+      totalDeCertificados += c.totalCertificados;
+    })
+
+    return totalDeCertificados;
+  }
+
+  function exportarTodosOsUsuarios(restrito){
+    var nomeDoArquivo;
+    var dados;
+
+    if(restrito){
+      nomeDoArquivo = "usuarios-restricted.json";
+      dados = JSON.stringify(usuarios.map(x => users = {
+                            nome: x.nome,
+                            totalDeCertificados: x.totalCertificados
+                            }), null, 2);
+    } else {
+      nomeDoArquivo = "usuarios-full.json";
+      dados = JSON.stringify(usuarios, null, 2);
     }
-    console.log("The file was saved!");
-  });
-  //await browser.close();
+
+    fs.writeFile(nomeDoArquivo, dados , 'utf8', function (err) {
+      if (err) {
+          console.log('Erro de escrita!');
+          return console.log(err);
+      }
+      console.log("O arquivo foi salvo!");
+    });
+  }
+
+  await browser.close();
 })()
