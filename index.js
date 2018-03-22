@@ -52,7 +52,7 @@ var dados;
 
   console.log('qtd: %s', quantidadeDePaginas);
 
-  for(var x=2;x>=0;x--){
+  for(var x=2;x>=1;x--){
     await page.waitForSelector('table[class="views-table cols-3"]', {visible: true, timeout: 500000});
     const quantidadeDePessoas = await page.$$eval('table[class="views-table cols-3"]', tables => tables.length);
 
@@ -102,20 +102,20 @@ var dados;
 
   }
 
-  function mycomparator(a,b) {
+  function comparador(a,b) {
     return parseInt(b.certificados.length, 10) - parseInt(a.certificados.length, 10);
   }
 
-  usuarios.sort(mycomparator);
+  usuarios.sort(comparador);
 
   var leituraRecursiva = function () {
     rl.question("Escolha uma opção:\n"
         + "1) Imprimir 10 primeiros por nome e quantidade de certificados\n"
         + "2) Total de usuários e de certificados emitidos\n"
-        + "3) Exportar todos os usuários para arquivo (usuarios-full.json)"
-        + "4) Exportar apenas nome e quantidade de certificados de todos os usuários (usuarios-restricted.json)"
+        + "3) Exportar todos os usuários para arquivo (usuarios-full.json)\n"
+        + "4) Exportar apenas nome e quantidade de certificados de todos os usuários (usuarios-restricted.json)\n"
         + "5) Exit\n"
-        + "-----------------------------------------------------------------\n"
+        + "--------------------------------------------------------\n"
         , function (line) {
 
             switch (line){
@@ -159,7 +159,7 @@ var dados;
   }
 
   function imprimirTotais(){
-    console.log('----------------- TOTAIS -----------------\n');
+    console.log('------------------------ TOTAIS ------------------------\n');
     console.log('Total de usuários: %s', usuarios.length);
     console.log('Total de certificados emitidos: %s', obterTotalDeCertificados());
     console.log('');
